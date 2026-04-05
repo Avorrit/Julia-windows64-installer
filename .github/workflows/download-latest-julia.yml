@@ -1,0 +1,42 @@
+name: Download Latest Julia Win64 with LFS
+
+on:
+  workflow_dispatch:
+
+jobs:
+  download-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout repo
+      - uses: actions/checkout@v3
+
+      # نصب Git LFS
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs -y
+          git lfs install
+
+      # دانلود آخرین نسخه Julia Win64
+      - name: Download Latest Julia Win64
+        run: |
+          echo "Finding latest Julia Win64 version..."
+          LATEST=$(curl -s https://julialang-s3.julialang.org/bin/winnt/x64/ | grep -oP 'julia-\d+\.\d+\.\d+-win64.zip' | sort -V | tail -n1)
+          echo "Latest version: $LATEST"
+          wget -O julia-win64.zip "https://julialang-s3.julialang.org/bin/winnt/x64/$LATEST"
+
+      # علامت‌گذاری فایل با LFS
+      - name: Track file with LFS
+        run: |
+          git lfs track "julia-win64.zip"
+          git add .gitattributes
+          git add julia-win64.zip
+
+      # Commit و push فایل
+      - name: Commit and push
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git commit -m "Add latest Julia Win64 installer with LFS" || echo "No changes to commit"
+          git push
