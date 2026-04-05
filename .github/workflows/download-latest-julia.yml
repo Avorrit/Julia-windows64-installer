@@ -1,4 +1,4 @@
-name: Upload Julia Installer Split
+name: Split & Upload Julia Installer
 
 on:
   workflow_dispatch:
@@ -16,15 +16,22 @@ jobs:
 
       - name: Split large file
         run: |
-          mkdir julia_parts
+          mkdir -p julia_parts
           split -b 90M julia-win64.zip julia_parts/julia-part-
 
-      - name: Commit & Push
+      - name: Show files to commit
+        run: git status
+
+      - name: Commit & Push only if needed
         env:
           GITHUB_TOKEN: ${{ secrets.PAT }}
         run: |
           git config user.name "Your Name"
           git config user.email "your-email@example.com"
           git add julia_parts/*
-          git commit -m "Add Julia installer split parts"
-          git push https://$GITHUB_TOKEN@github.com/<YOUR_USERNAME>/Julia-windows64-installer.git main
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Add Julia installer split parts"
+            git push https://$GITHUB_TOKEN@github.com/<YOUR_USERNAME>/Julia-windows64-installer.git main
+          else
+            echo "Nothing new to commit."
+          fi
