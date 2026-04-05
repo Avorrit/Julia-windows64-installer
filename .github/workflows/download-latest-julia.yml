@@ -1,4 +1,4 @@
-name: Split & Upload Julia Installer
+name: Split & Upload Julia Installer with LFS
 
 on:
   workflow_dispatch:
@@ -10,6 +10,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Install Git LFS
+        run: |
+          sudo apt-get update
+          sudo apt-get install git-lfs -y
+          git lfs install
+
       - name: Download Julia installer
         run: |
           wget -O julia-win64.zip https://julialang-s3.julialang.org/bin/winnt/x64/1.12/julia-1.12.5-win64.zip
@@ -19,8 +25,10 @@ jobs:
           mkdir -p julia_parts
           split -b 90M julia-win64.zip julia_parts/julia-part-
 
-      - name: Show files to commit
-        run: git status
+      - name: Track parts with LFS
+        run: |
+          git lfs track "julia_parts/*"
+          git add .gitattributes
 
       - name: Commit & Push only if needed
         env:
@@ -29,9 +37,10 @@ jobs:
           git config user.name "Your Name"
           git config user.email "your-email@example.com"
           git add julia_parts/*
+          git branch -M julia-installer
           if ! git diff-index --quiet HEAD; then
-            git commit -m "Add Julia installer split parts"
-            git push https://$GITHUB_TOKEN@github.com/<YOUR_USERNAME>/Julia-windows64-installer.git main
+            git commit -m "Add Julia installer split parts with LFS"
+            git push https://$GITHUB_TOKEN@github.com/<YOUR_USERNAME>/Julia-windows64-installer.git julia-installer
           else
             echo "Nothing new to commit."
           fi
