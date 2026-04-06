@@ -23,9 +23,13 @@ jobs:
           split -b 10M julia.zip julia_parts/julia-part-
           ls -lh julia_parts
 
+      - name: Create dedicated branch for upload
+        run: |
+          git fetch origin
+          git checkout -B julia-installer origin/main || git checkout -B julia-installer
+
       - name: Commit & Push 10MB parts
         run: |
-          git checkout -B julia-installer
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add julia_parts
