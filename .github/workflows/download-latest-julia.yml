@@ -1,13 +1,14 @@
-name: Split & Upload Julia Installer with LFS
+name: Download Split And Upload Julia
 
 on:
   workflow_dispatch:
 
 jobs:
-  upload:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       - name: Install Git LFS
@@ -18,29 +19,29 @@ jobs:
 
       - name: Download Julia installer
         run: |
-          wget -O julia-win64.zip https://julialang-s3.julialang.org/bin/winnt/x64/1.12/julia-1.12.5-win64.zip
+          wget -O julia.zip https://julialang-s3.julialang.org/bin/winnt/x64/1.12/julia-1.12.5-win64.zip
 
-      - name: Split large file
+      - name: Split file
         run: |
           mkdir -p julia_parts
-          split -b 90M julia-win64.zip julia_parts/julia-part-
+          split -b 90M julia.zip julia_parts/julia-part-
 
-      - name: Track parts with LFS
+      - name: Track with LFS
         run: |
           git lfs track "julia_parts/*"
           git add .gitattributes
 
-      - name: Commit & Push only if needed
+      - name: Commit and Push
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
+          TOKEN: ${{ secrets.PAT }}
         run: |
-          git config user.name "Your Name"
-          git config user.email "your-email@example.com"
-          git add julia_parts/*
-          git branch -M julia-installer
-          if ! git diff-index --quiet HEAD; then
-            git commit -m "Add Julia installer split parts with LFS"
-            git push https://$GITHUB_TOKEN@github.com/<YOUR_USERNAME>/Julia-windows64-installer.git julia-installer
-          else
-            echo "Nothing new to commit."
-          fi
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          git checkout -B julia-installer
+
+          git add .
+
+          git commit -m "upload julia installer" || echo "nothing to commit"
+
+          git push --force https://$TOKEN@github.com/<YOUR_USERNAME>/Julia-windows64-installer.git julia-installer
