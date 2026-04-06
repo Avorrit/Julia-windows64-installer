@@ -1,37 +1,22 @@
-name: Download Split And Upload Julia
+name: Download Julia and Upload to Release
 
 on:
   workflow_dispatch:
 
 jobs:
-  build_and_upload:
+  release_upload:
     runs-on: ubuntu-latest
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
       - name: Download Julia installer
         run: |
           curl -L -o julia.zip https://julialang-s3.julialang.org/bin/winnt/x64/1.12/julia-1.12.5-win64.zip
           ls -lh julia.zip
 
-      - name: Split file into 10MB parts
-        run: |
-          mkdir -p julia_parts
-          split -b 10M julia.zip julia_parts/julia-part-
-          ls -lh julia_parts
-
-      - name: Create dedicated branch for upload
-        run: |
-          git fetch origin
-          git checkout -B julia-installer origin/main || git checkout -B julia-installer
-
-      - name: Commit & Push 10MB parts
-        run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add julia_parts
-          git commit -m "upload julia installer 10MB parts" || echo "Nothing to commit"
-          git push https://x-access-token:$GITHUB_TOKEN@github.com/${{ github.repository }} julia-installer -v
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          name: julia-1.12.5-win64.zip
+          tag_name: julia-1.12.5
+          files: julia.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
