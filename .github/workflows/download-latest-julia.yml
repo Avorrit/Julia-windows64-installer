@@ -36,6 +36,8 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
       - name: Configure Git
         run: |
@@ -43,8 +45,7 @@ jobs:
           git config user.email "actions@github.com"
 
       - name: Checkout branch
-        run: |
-          git checkout -B julia-installer
+        run: git checkout -B julia-installer
 
       - name: Stage files
         run: |
@@ -52,9 +53,7 @@ jobs:
           git status
 
       - name: Commit files
-        run: |
-          git commit -m "upload julia installer 10MB parts" || echo "Nothing to commit"
+        run: git commit -m "upload julia installer 10MB parts" || echo "Nothing to commit"
 
       - name: Push to GitHub
-        run: |
-          git push https://x-access-token:$GITHUB_TOKEN@github.com/${{ github.repository }} julia-installer -v || echo "PUSH_FAILED"
+        run: git push https://x-access-token:$GITHUB_TOKEN@github.com/${{ github.repository }} julia-installer -v || echo "PUSH_FAILED"
