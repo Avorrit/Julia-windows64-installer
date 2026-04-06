@@ -5,24 +5,18 @@ on:
 
 jobs:
 
-  # 1️⃣ Checkout & LFS
   setup:
     runs-on: ubuntu-latest
-    outputs:
-      lfs_installed: ${{ steps.check_lfs.outputs.installed }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
       - name: Install Git LFS
-        id: check_lfs
         run: |
           sudo apt-get update
           sudo apt-get install git-lfs -y
           git lfs install
-          echo "installed=true" >> $GITHUB_OUTPUT
 
-  # 2️⃣ Download Julia
   download:
     runs-on: ubuntu-latest
     needs: setup
@@ -32,7 +26,6 @@ jobs:
           curl -L -o julia.zip https://julialang-s3.julialang.org/bin/winnt/x64/1.12/julia-1.12.5-win64.zip || echo "DOWNLOAD_FAILED"
           ls -lh julia.zip || echo "FILE_NOT_FOUND"
 
-  # 3️⃣ Split file
   split:
     runs-on: ubuntu-latest
     needs: download
@@ -43,22 +36,9 @@ jobs:
           split -b 90M julia.zip julia_parts/julia-part- || echo "SPLIT_FAILED"
           ls -lh julia_parts
 
-  # 4️⃣ Track with LFS
-  track_lfs:
-    runs-on: ubuntu-latest
-    needs: split
-    steps:
-      - name: Track with Git LFS
-        run: |
-          git lfs track "julia_parts/*"
-          git add .gitattributes
-          git add julia_parts
-          echo "LFS tracked"
-
-  # 5️⃣ Commit & Push
   push:
     runs-on: ubuntu-latest
-    needs: track_lfs
+    needs: split
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
@@ -67,13 +47,13 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git checkout -B julia-installer
+          git add julia_parts
           git commit -m "upload julia installer" || echo "nothing to commit"
           git push https://x-access-token:$GITHUB_TOKEN@github.com/${{ github.repository }} julia-installer -v || echo "PUSH_FAILED"
 
-  # 6️⃣ Sanity Check
   sanity:
     runs-on: ubuntu-latest
-    needs: [download, split, track_lfs]
+    needs: [download, split]
     steps:
       - name: Check files and folders
         run: |
