@@ -7,10 +7,6 @@ on:
         description: 'Enter Julia versions separated by spaces (e.g., 1.12.5 1.11.3)'
         required: true
         default: '1.12.5'
-      tag_name:
-        description: 'Tag name prefix for the release'
-        required: true
-        default: 'julia-bundle'
 
 jobs:
   release_upload:
@@ -22,33 +18,35 @@ jobs:
 
       - name: Download all binaries for requested versions
         run: |
-          mkdir -p downloads
-          cd downloads
           for ver in ${{ github.event.inputs.versions }}; do
             echo "Processing version: $ver"
-
-            # Extract all URLs for the current version using jq
-            urls=$(jq -r --arg v "$ver" '.[$v].files[]?.url' ../versions.json 2>/dev/null)
-
+            mkdir -p "downloads/$ver"
+            cd "downloads/$ver"
+            urls=$(jq -r --arg v "$ver" '.[$v].files[]?.url' ../../versions.json 2>/dev/null)
             if [ -z "$urls" ]; then
-              echo "Warning: version $ver not found in versions.json, skipping."
+              echo "Warning: version $ver not found, skipping."
+              cd ../..
               continue
             fi
-
-            echo "Found $(echo "$urls" | wc -l) assets for version $ver"
             echo "$urls" | while read -r url; do
               filename=$(basename "$url")
               echo "Downloading $filename ..."
               curl -L -o "$filename" "$url"
             done
+            cd ../..
           done
-          ls -lh
 
-      - name: Create Release and Upload All Assets
-        uses: softprops/action-gh-release@v1
-        with:
-          name: Julia All-Variants Bundle
-          tag_name: ${{ github.event.inputs.tag_name }}-${{ github.run_id }}
-          files: ${{ github.workspace }}/downloads/*
+      - name: Create or Update Release for each version
+        run: |
+          for ver in ${{ github.event.inputs.versions }}; do
+            if [ ! -d "downloads/$ver" ]; then
+              continue
+            fi
+            echo "Creating/updating release for Julia $ver"
+            gh release create "julia-$ver" downloads/$ver/* \
+              --title "Julia $ver - All Platforms" \
+              --notes "All binaries for Julia $ver" \
+              --clobber || true
+          done
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
