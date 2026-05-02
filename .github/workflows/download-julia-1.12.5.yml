@@ -1,0 +1,54 @@
+name: Download All Julia Variants and Upload to a Single Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      versions:
+        description: 'Enter Julia versions separated by spaces (e.g., 1.12.5 1.11.3)'
+        required: true
+        default: '1.12.5'
+      tag_name:
+        description: 'Tag name prefix for the release'
+        required: true
+        default: 'julia-bundle'
+
+jobs:
+  release_upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download JSON Manifest
+        run: |
+          curl -L -o versions.json https://julialang-s3.julialang.org/bin/versions.json
+
+      - name: Download all binaries for requested versions
+        run: |
+          mkdir -p downloads
+          cd downloads
+          for ver in ${{ github.event.inputs.versions }}; do
+            echo "Processing version: $ver"
+
+            # Extract all URLs for the current version using jq
+            urls=$(jq -r --arg v "$ver" '.[$v].files[]?.url' ../versions.json 2>/dev/null)
+
+            if [ -z "$urls" ]; then
+              echo "Warning: version $ver not found in versions.json, skipping."
+              continue
+            fi
+
+            echo "Found $(echo "$urls" | wc -l) assets for version $ver"
+            echo "$urls" | while read -r url; do
+              filename=$(basename "$url")
+              echo "Downloading $filename ..."
+              curl -L -o "$filename" "$url"
+            done
+          done
+          ls -lh
+
+      - name: Create Release and Upload All Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Julia All-Variants Bundle
+          tag_name: ${{ github.event.inputs.tag_name }}-${{ github.run_id }}
+          files: ${{ github.workspace }}/downloads/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
